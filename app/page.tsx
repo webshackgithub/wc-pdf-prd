@@ -4,15 +4,15 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { UploadView } from "@/components/views/UploadView";
-// import { PreviewView } from "@/components/views/PreviewView"; // SSR Issue Fix
+// import { PreviewView } from "@/components/views/PreviewView"; // Deprecated
 import { ProcessingView } from "@/components/views/ProcessingView";
-import { SuccessView } from "@/components/views/SuccessView";
 import { splitPdf, createZip } from "@/lib/pdf-processing";
 import { toast } from "sonner";
 
-const PreviewView = dynamic(() => import("@/components/views/PreviewView").then(mod => mod.PreviewView), {
+// Fix DOMMatrix Error: Dynamic import to disable SSR for react-pdf components
+const SuccessView = dynamic(() => import("@/components/views/SuccessView").then(mod => mod.SuccessView), {
   ssr: false,
-  loading: () => <div className="p-10 text-center">Loading Preview...</div>
+  loading: () => <div className="p-10 text-center">Loading Results...</div>
 });
 
 type ViewState = "IDLE" | "PREVIEW" | "PROCESSING" | "COMPLETED";
@@ -20,31 +20,33 @@ type ViewState = "IDLE" | "PREVIEW" | "PROCESSING" | "COMPLETED";
 export default function Home() {
   const [viewState, setViewState] = useState<ViewState>("IDLE");
   const [file, setFile] = useState<File | null>(null);
-  const [zipBlob, setZipBlob] = useState<Blob | null>(null); // For Phase 4
+  const [zipBlob, setZipBlob] = useState<Blob | null>(null);
+  const [splitBlobs, setSplitBlobs] = useState<Blob[]>([]); // New State for individual pages
 
-  // Phase 2: Handle File Upload -> Go to Preview
+  // Phase 4: Direct Processing Flow (Upload -> Processing -> Success)
   const handleFileUpload = (uploadedFile: File) => {
     setFile(uploadedFile);
-    setViewState("PREVIEW");
+    handleStartProcessing(uploadedFile); // Process immediately
   };
 
-  // Phase 3: Start Processing from Preview
-  const handleStartProcessing = async () => {
-    if (!file) return;
+  const handleStartProcessing = async (targetFile: File) => {
+    // Note: We use targetFile directly because state update 'setFile' might not be reflected yet
+    if (!targetFile) return;
     setViewState("PROCESSING");
 
     try {
       // 1. PDF Split
-      const splitBlobs = await splitPdf(file);
+      const pages = await splitPdf(targetFile);
+      setSplitBlobs(pages); // Store split pages
 
       // 2. ZIP Creation
-      const createdZip = await createZip(splitBlobs, file.name);
+      const createdZip = await createZip(pages, targetFile.name);
 
       setZipBlob(createdZip);
       setViewState("COMPLETED");
 
       // Temporary: Log for verification
-      console.log(`[Phase 3 Verified] Zip created: ${createdZip.size} bytes`);
+      console.log(`[Phase 4 Simplified] Zip created: ${createdZip.size} bytes`);
 
     } catch (error) {
       console.error(error);
@@ -53,12 +55,14 @@ export default function Home() {
       });
       setViewState("IDLE");
       setFile(null);
+      setSplitBlobs([]);
     }
   };
 
   const handleReset = () => {
     setFile(null);
     setZipBlob(null);
+    setSplitBlobs([]);
     setViewState("IDLE");
   };
 
@@ -75,7 +79,7 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-1 container mx-auto px-4 py-8 flex flex-col items-center justify-center">
-        <div className="w-full max-w-2xl space-y-8">
+        <div className="w-full max-w-6xl space-y-8"> {/* Increased width for 5-col grid */}
           <div className="text-center space-y-2">
             <h2 className="text-3xl font-bold tracking-tight">PDF 페이지 분할</h2>
             <p className="text-muted-foreground">
@@ -86,23 +90,15 @@ export default function Home() {
           {/* View Switching Area */}
           <div className="min-h-[300px] flex items-center justify-center transition-all duration-300">
             {viewState === "IDLE" && (
-              <div className="w-full animate-in fade-in zoom-in-95 duration-300">
+              <div className="w-full max-w-2xl animate-in fade-in zoom-in-95 duration-300">
                 <UploadView onUpload={handleFileUpload} />
               </div>
             )}
 
-            {viewState === "PREVIEW" && file && (
-              <div className="w-full">
-                <PreviewView
-                  file={file}
-                  onStart={handleStartProcessing}
-                  onCancel={handleReset}
-                />
-              </div>
-            )}
+            {/* Preview State Removed */}
 
             {viewState === "PROCESSING" && (
-              <div className="w-full animate-in fade-in zoom-in-95 duration-300">
+              <div className="w-full max-w-2xl animate-in fade-in zoom-in-95 duration-300">
                 <ProcessingView />
               </div>
             )}
@@ -111,16 +107,13 @@ export default function Home() {
               <div className="w-full animate-in fade-in zoom-in-95 duration-300">
                 <SuccessView
                   zipBlob={zipBlob}
+                  file={file}
+                  pages={splitBlobs}
                   fileName={file?.name || ""}
                   onReset={handleReset}
                 />
               </div>
             )}
-          </div>
-
-          {/* Dev Helper - Only visible during dev if needed, or just part of the click interaction */}
-          <div className="text-center text-xs text-muted-foreground mt-8">
-            <p>Phase 1 Verification: Click the upload area to simulate flow.</p>
           </div>
         </div>
       </main>
