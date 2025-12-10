@@ -24,6 +24,7 @@ trigger: always_on
     - `react-dropzone`: 파일 업로드 인터랙션
     - `react-pdf`: PDF 페이지 미리보기 (썸네일)
     - `file-saver`: 클라이언트 측 파일 다운로드
+    - `next-themes`: 다크 모드(Dark Mode) 테마 관리
 
 ## 3. 디렉토리 구조 (Directory Structure)
 ```
@@ -34,11 +35,12 @@ trigger: always_on
 │   └── globals.css       # Tailwind & Global Styles
 ├── components/
 │   ├── ui/               # Shadcn UI reusable components (Button, Card, Sonner, etc.)
+│   ├── theme-provider.tsx # [Theme] Next-themes Provider Wrapper
 │   └── views/            # Feature-specific Page Views
 │       ├── UploadView.tsx      # [IDLE] 파일 업로드 (Dropzone, Validation)
 │       ├── PreviewView.tsx     # [PREVIEW] 업로드 된 파일 미리보기 및 확인
 │       ├── ProcessingView.tsx  # [PROCESSING] 처리 진행 화면
-│       └── SuccessView.tsx     # [COMPLETED] 완료 및 다운로드 화면
+│       └── SuccessView.tsx     # [COMPLETED] 완료, 페이지 선택 및 다운로드 화면
 ├── lib/
 │   ├── utils.ts          # Shadcn cn() 유틸리티
 │   └── pdf-processing.ts # PDF 분할(splitPdf) 및 ZIP 압축(createZip) 로직
@@ -71,12 +73,14 @@ trigger: always_on
     - `splitPdf()`: `pdf-lib`으로 문서를 로드하고 페이지별로 분할하여 Blob 배열 생성 (페이지 수 검증 포함).
     - `createZip()`: `jszip`으로 분할된 Blob들을 하나의 ZIP 파일로 패키징.
 7. **Completion**: 결과 ZIP Blob을 상태에 저장하고 `COMPLETED` 상태로 전환.
-8. **Download**: `SuccessView`에서 ZIP 다운로드 트리거.
+8. **Selection & Download**:
+    - `SuccessView`에서 사용자가 다운로드할 페이지를 개별 선택 가능 (기본값: 전체 선택).
+    - "전체 다운로드" 또는 "선택 다운로드" 버튼을 통해 ZIP 파일 다운로드 트리거.
 
 ## 5. 코딩 컨벤션 (Coding Conventions)
 
 ### 5.1 일반 규칙
-- 모든 코멘트와 문서는 **한국어**로 작성합니다.
+- 모든 설명, 구현 계획, 작업(Task), 주석, 커밋 메시지 제안은 **한국어**로 작성합니다.
 - 변수명, 함수명은 영어로 작성하되 의미가 명확해야 합니다 (예: `handleFileUpload` (O), `doIt` (X)).
 - **Functional Components**: React 컴포넌트는 함수형으로 작성합니다.
 

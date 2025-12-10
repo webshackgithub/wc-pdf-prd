@@ -68,15 +68,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="border-b bg-white dark:bg-gray-950">
-        <div className="container mx-auto px-4 h-16 flex items-center">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            PDF Splitter
-          </h1>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="flex-1 container mx-auto px-4 py-8 flex flex-col items-center justify-center">
         <div className="w-full max-w-6xl space-y-8"> {/* Increased width for 5-col grid */}
@@ -117,13 +108,6 @@ export default function Home() {
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t py-6 bg-gray-50 dark:bg-gray-900/50">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} PDF Splitter. Client-side processing only.
-        </div>
-      </footer>
     </div>
   );
 }
