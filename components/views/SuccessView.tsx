@@ -25,9 +25,17 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset }: Success
     const [numPages, setNumPages] = useState<number>(0);
     const [hoveredPage, setHoveredPage] = useState<number | null>(null);
     const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+    const [isLandscape, setIsLandscape] = useState(false);
 
-    function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
-        setNumPages(numPages);
+    async function onDocumentLoadSuccess(pdf: any) {
+        setNumPages(pdf.numPages);
+        try {
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({ scale: 1 });
+            setIsLandscape(viewport.width > viewport.height);
+        } catch (error) {
+            console.error("Failed to detect page orientation:", error);
+        }
     }
 
     // Toggle Page Selection
@@ -134,7 +142,10 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset }: Success
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 max-h-[600px] overflow-y-auto p-4 border rounded-lg bg-gray-50/50 dark:bg-gray-900/50">
+                            <div className={cn(
+                                "grid grid-cols-2 gap-4 max-h-[600px] overflow-y-auto p-4 border rounded-lg bg-gray-50/50 dark:bg-gray-900/50",
+                                isLandscape ? "md:grid-cols-2 lg:grid-cols-3" : "md:grid-cols-4 lg:grid-cols-5"
+                            )}>
                                 <Document
                                     file={file}
                                     onLoadSuccess={onDocumentLoadSuccess}
@@ -155,11 +166,14 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset }: Success
                                                 onMouseEnter={() => setHoveredPage(index)}
                                                 onMouseLeave={() => setHoveredPage(null)}
                                             >
-                                                <CardContent className="p-0 relative aspect-[1/1.414]">
+                                                <CardContent className={cn(
+                                                    "p-0 relative flex items-center justify-center bg-gray-100 dark:bg-gray-800",
+                                                    isLandscape ? "aspect-[1.414/1]" : "aspect-[1/1.414]"
+                                                )}>
                                                     <Page
                                                         pageNumber={index + 1}
-                                                        width={220}
-                                                        className="w-full h-full object-contain"
+                                                        width={isLandscape ? 300 : 180}
+                                                        className="shadow-sm max-w-full max-h-full h-auto w-auto"
                                                         renderTextLayer={false}
                                                         renderAnnotationLayer={false}
                                                     />

@@ -103,8 +103,8 @@ export default function Home() {
         {viewState === "IDLE" && (
           <>
             {/* Overlay Text / Instructions */}
-            <div className="absolute top-10 w-full text-center z-10 pointer-events-none">
-              <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg mb-4">
+            <div className="absolute top-[10%] w-full text-center z-10 pointer-events-none px-4">
+              <h1 className="text-3xl md:text-5xl font-bold text-white drop-shadow-lg mb-4">
                 PDF 분할 로봇
               </h1>
               <p className="text-xl text-white/90 drop-shadow-md font-medium">
@@ -116,14 +116,14 @@ export default function Home() {
             </div>
 
             <div
-              className="absolute top-[18%] left-1/2 -translate-x-1/2 w-64 h-64 z-20 pointer-events-auto"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 md:w-72 md:h-72 lg:w-96 lg:h-96 z-20 pointer-events-auto"
             >
-              {/* Draggable Area Wrapper targeting Robot Head */}
+              {/* Draggable Area Wrapper */}
               <div
                 {...getRootProps()}
                 className={cn(
                   "w-full h-full rounded-full cursor-pointer transition-all duration-300 flex items-center justify-center group",
-                  isDragActive ? "bg-blue-500/20 ring-4 ring-blue-400 scale-110" : "hover:bg-white/10 hover:ring-2 hover:ring-white/30"
+                  isDragActive ? "bg-blue-500/20 ring-4 ring-blue-400 scale-110" : "hover:bg-white/5 hover:ring-2 hover:ring-white/20"
                 )}
               >
                 <input {...getInputProps()} />
