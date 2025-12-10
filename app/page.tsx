@@ -127,18 +127,6 @@ export default function Home() {
                 )}
               >
                 <input {...getInputProps()} />
-
-                {/* Tooltip / Hint Text */}
-                <div className={cn(
-                  "absolute -top-16 left-1/2 -translate-x-1/2 w-80 text-center transition-opacity duration-300",
-                  isDragActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                )}>
-                  <span className="px-4 py-2 bg-black/70 text-white text-sm rounded-full backdrop-blur-md border border-white/20 whitespace-nowrap">
-                    {isDragActive ? "PDF를 여기에 놓으세요!" : "로봇(Whobee)의 머리에 PDF를 주세요"}
-                  </span>
-                  {/* Arrow pointing down */}
-                  <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-black/70 mx-auto mt-1 opacity-70"></div>
-                </div>
               </div>
             </div>
           </>
