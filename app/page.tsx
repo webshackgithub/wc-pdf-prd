@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useDropzone } from "react-dropzone";
 import { InteractiveRobotSpline } from "@/components/blocks/interactive-3d-robot";
 import { ProcessingView } from "@/components/views/ProcessingView";
-import { MergePrepView } from "@/components/views/MergePrepView";
 import { splitPdf, createZip, mergePdfs } from "@/lib/pdf-processing";
 import { toast } from "sonner";
 
@@ -15,6 +14,11 @@ import { cn } from "@/lib/utils";
 const SuccessView = dynamic(() => import("@/components/views/SuccessView").then(mod => mod.SuccessView), {
   ssr: false,
   loading: () => <div className="p-10 text-center">결과 불러오는 중...</div>
+});
+
+const MergePrepView = dynamic(() => import("@/components/views/MergePrepView").then(mod => mod.MergePrepView), {
+  ssr: false,
+  loading: () => <div className="p-10 text-center">목록 불러오는 중...</div>
 });
 
 type ViewState = "IDLE" | "MERGE_PREP" | "PREVIEW" | "PROCESSING" | "COMPLETED";
