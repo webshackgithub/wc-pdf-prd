@@ -86,3 +86,22 @@ export async function createZip(pdfBlobs: Blob[], originalFileName: string): Pro
 
     return zipBlob;
 }
+
+/**
+ * 여러 PDF 파일을 하나로 병합합니다.
+ * @param files 병합할 PDF 파일 배열
+ * @returns 병합된 PDF Blob
+ */
+export async function mergePdfs(files: File[]): Promise<Blob> {
+    const mergedPdf = await PDFDocument.create();
+
+    for (const file of files) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await PDFDocument.load(arrayBuffer);
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
+    }
+
+    const mergedPdfBytes = await mergedPdf.save();
+    return new Blob([mergedPdfBytes as unknown as BlobPart], { type: "application/pdf" });
+}

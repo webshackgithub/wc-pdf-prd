@@ -19,9 +19,10 @@ interface SuccessViewProps {
     pages: Blob[]; // 개별 페이지 Blob 배열
     fileName: string;
     onReset: () => void;
+    mode?: "SPLIT" | "MERGE";
 }
 
-export function SuccessView({ zipBlob, file, pages, fileName, onReset }: SuccessViewProps) {
+export function SuccessView({ zipBlob, file, pages, fileName, onReset, mode = "SPLIT" }: SuccessViewProps) {
     const [numPages, setNumPages] = useState<number>(0);
     const [hoveredPage, setHoveredPage] = useState<number | null>(null);
     const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
@@ -51,8 +52,14 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset }: Success
 
     const handleDownloadZip = () => {
         if (!zipBlob) return;
-        const downloadName = fileName ? fileName.replace(/\.pdf$/i, ".zip") : "split-pages.zip";
-        saveAs(zipBlob, downloadName);
+
+        if (mode === "MERGE") {
+            const downloadName = fileName || "merged.pdf"; // 병합 모드는 PDF 다운로드
+            saveAs(zipBlob, downloadName);
+        } else {
+            const downloadName = fileName ? fileName.replace(/\.pdf$/i, ".zip") : "split-pages.zip";
+            saveAs(zipBlob, downloadName);
+        }
     };
 
     const handleDownloadSelected = async () => {
@@ -110,18 +117,20 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset }: Success
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Button className="w-full sm:w-48 gap-2" size="lg" onClick={handleDownloadZip} disabled={!zipBlob}>
                             <Download className="w-4 h-4" />
-                            전체 ZIP 다운로드
+                            {mode === "MERGE" ? "병합된 PDF 다운로드" : "전체 ZIP 다운로드"}
                         </Button>
-                        <Button
-                            className="w-full sm:w-48 gap-2"
-                            size="lg"
-                            variant="secondary"
-                            onClick={handleDownloadSelected}
-                            disabled={selectedIndices.size === 0}
-                        >
-                            <PackageCheck className="w-4 h-4" />
-                            선택 다운로드 ({selectedIndices.size})
-                        </Button>
+                        {mode === "SPLIT" && (
+                            <Button
+                                className="w-full sm:w-48 gap-2"
+                                size="lg"
+                                variant="secondary"
+                                onClick={handleDownloadSelected}
+                                disabled={selectedIndices.size === 0}
+                            >
+                                <PackageCheck className="w-4 h-4" />
+                                선택 다운로드 ({selectedIndices.size})
+                            </Button>
+                        )}
                         <Button variant="outline" className="w-full sm:w-48 gap-2" onClick={onReset}>
                             <RotateCcw className="w-4 h-4" />
                             처음으로
@@ -196,22 +205,24 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset }: Success
                                                         #{index + 1}
                                                     </div>
 
-                                                    {/* Hover Overlay with Download Button */}
-                                                    <div className={cn(
-                                                        "absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity",
-                                                        hoveredPage === index ? "opacity-100" : "opacity-0",
-                                                        // Prevent toggle when clicking the button area by stopping propagation on the button itself
-                                                    )}>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="secondary"
-                                                            className="gap-2 shadow-lg hover:scale-105 transition-transform"
-                                                            onClick={(e) => handleDownloadPage(e, index)}
-                                                        >
-                                                            <FileDown className="w-4 h-4" />
-                                                            다운로드
-                                                        </Button>
-                                                    </div>
+                                                    {/* Hover Overlay with Download Button (Only in SPLIT mode or if pages exist) */}
+                                                    {mode === "SPLIT" && (
+                                                        <div className={cn(
+                                                            "absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity",
+                                                            hoveredPage === index ? "opacity-100" : "opacity-0",
+                                                            // Prevent toggle when clicking the button area by stopping propagation on the button itself
+                                                        )}>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                className="gap-2 shadow-lg hover:scale-105 transition-transform"
+                                                                onClick={(e) => handleDownloadPage(e, index)}
+                                                            >
+                                                                <FileDown className="w-4 h-4" />
+                                                                다운로드
+                                                            </Button>
+                                                        </div>
+                                                    )}
                                                 </CardContent>
                                             </Card>
                                         );
