@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Trash2, ArrowUp, ArrowDown, Merge, Plus } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { Document, Page, pdfjs } from "react-pdf";
+import { splitPdf } from "@/lib/pdf-processing";
+import { toast } from "sonner";
+
 
 // Worker 설정 (다른 뷰와 동일하게)
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -39,8 +42,28 @@ export function MergePrepView({ files, onFilesChange, onStart, onCancel }: Merge
 
     // 추가 파일 업로드
     const { getRootProps, getInputProps } = useDropzone({
-        onDrop: (acceptedFiles) => {
-            onFilesChange([...files, ...acceptedFiles]);
+        onDrop: async (acceptedFiles) => {
+            const validFiles = acceptedFiles.filter(f => f.type === "application/pdf");
+            if (validFiles.length === 0) return;
+
+            toast.info("페이지를 추출하고 있습니다...");
+            try {
+                let newSplitFiles: File[] = [];
+                for (const file of validFiles) {
+                    const blobs = await splitPdf(file);
+                    const splitFileObjects = blobs.map((blob, index) => {
+                        const pageNum = (index + 1).toString().padStart(2, "0");
+                        const newName = file.name.replace(/\.pdf$/i, `_p${pageNum}.pdf`);
+                        return new File([blob], newName, { type: "application/pdf" });
+                    });
+                    newSplitFiles = [...newSplitFiles, ...splitFileObjects];
+                }
+                onFilesChange([...files, ...newSplitFiles]);
+                toast.success(`${newSplitFiles.length}개의 페이지가 추가되었습니다.`);
+            } catch (error) {
+                console.error(error);
+                toast.error("파일 처리 중 오류가 발생했습니다.");
+            }
         },
         accept: { 'application/pdf': ['.pdf'] },
         multiple: true

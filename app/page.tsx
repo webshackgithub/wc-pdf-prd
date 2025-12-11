@@ -34,7 +34,7 @@ export default function Home() {
   const ROBOT_SCENE_URL = "https://prod.spline.design/PyzDhpQ9E5f1E3MT/scene.splinecode";
 
   // Dropzone Callback
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       // Common validation
       const validFiles = acceptedFiles.filter(f => f.type === "application/pdf");
@@ -54,8 +54,34 @@ export default function Home() {
         handleStartProcessing(targetFile);
       } else {
         // 병합 모드: 파일 추가 후 준비 화면으로 이동
-        setMergeFiles(prev => [...prev, ...validFiles]);
-        setViewState("MERGE_PREP");
+        // 파일들을 페이지별로 분리해서 추가
+        toast.info("페이지를 추출하고 있습니다...");
+
+        try {
+          let newSplitFiles: File[] = [];
+
+          for (const file of validFiles) {
+            // 각 파일을 분할
+            const blobs = await splitPdf(file);
+
+            // Blob을 File 객체로 변환
+            const splitFileObjects = blobs.map((blob, index) => {
+              const pageNum = (index + 1).toString().padStart(2, "0");
+              const newName = file.name.replace(/\.pdf$/i, `_p${pageNum}.pdf`);
+              return new File([blob], newName, { type: "application/pdf" });
+            });
+
+            newSplitFiles = [...newSplitFiles, ...splitFileObjects];
+          }
+
+          setMergeFiles(prev => [...prev, ...newSplitFiles]);
+          setViewState("MERGE_PREP");
+          toast.success(`${newSplitFiles.length}개의 페이지가 추가되었습니다.`);
+
+        } catch (error) {
+          console.error("Failed to split dropped files:", error);
+          toast.error("파일 처리 중 오류가 발생했습니다.");
+        }
       }
     }
   }, [mode]);

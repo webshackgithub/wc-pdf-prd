@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Download, RotateCcw, FileDown, CheckSquare, Square, PackageCheck } from "lucide-react";
+import { CheckCircle2, Download, RotateCcw, FileDown, CheckSquare, Square, PackageCheck, Loader2 } from "lucide-react";
 import { saveAs } from "file-saver";
 import { createZip } from "@/lib/pdf-processing";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset, mode = "S
     const [hoveredPage, setHoveredPage] = useState<number | null>(null);
     const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
     const [isLandscape, setIsLandscape] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     async function onDocumentLoadSuccess(pdf: any) {
         setNumPages(pdf.numPages);
@@ -50,15 +51,25 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset, mode = "S
         setSelectedIndices(newSelected);
     };
 
-    const handleDownloadZip = () => {
+    const handleDownloadZip = async () => {
         if (!zipBlob) return;
+        setIsDownloading(true);
+        // 짧은 지연을 주어 로딩 상태를 보여줌 (UX)
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        if (mode === "MERGE") {
-            const downloadName = fileName || "merged.pdf"; // 병합 모드는 PDF 다운로드
-            saveAs(zipBlob, downloadName);
-        } else {
-            const downloadName = fileName ? fileName.replace(/\.pdf$/i, ".zip") : "split-pages.zip";
-            saveAs(zipBlob, downloadName);
+        try {
+            if (mode === "MERGE") {
+                const downloadName = fileName || "merged.pdf"; // 병합 모드는 PDF 다운로드
+                saveAs(zipBlob, downloadName);
+            } else {
+                const downloadName = fileName ? fileName.replace(/\.pdf$/i, ".zip") : "split-pages.zip";
+                saveAs(zipBlob, downloadName);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("다운로드 실패");
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -68,6 +79,7 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset, mode = "S
             return;
         }
 
+        setIsDownloading(true);
         try {
             // Get Blobs for selected indices
             const selectedBlobs = Array.from(selectedIndices)
@@ -84,6 +96,8 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset, mode = "S
         } catch (error) {
             console.error(error);
             toast.error("다운로드 중 오류가 발생했습니다.");
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -115,9 +129,18 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset, mode = "S
                 <CardContent className="space-y-6">
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Button className="w-full sm:w-48 gap-2" size="lg" onClick={handleDownloadZip} disabled={!zipBlob}>
-                            <Download className="w-4 h-4" />
-                            {mode === "MERGE" ? "병합된 PDF 다운로드" : "전체 ZIP 다운로드"}
+                        <Button
+                            className="w-full sm:w-48 gap-2"
+                            size="lg"
+                            onClick={handleDownloadZip}
+                            disabled={!zipBlob || isDownloading}
+                        >
+                            {isDownloading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Download className="w-4 h-4" />
+                            )}
+                            {isDownloading ? "다운로드 중..." : (mode === "MERGE" ? "병합된 PDF 다운로드" : "전체 ZIP 다운로드")}
                         </Button>
                         {mode === "SPLIT" && (
                             <Button
@@ -125,10 +148,14 @@ export function SuccessView({ zipBlob, file, pages, fileName, onReset, mode = "S
                                 size="lg"
                                 variant="secondary"
                                 onClick={handleDownloadSelected}
-                                disabled={selectedIndices.size === 0}
+                                disabled={selectedIndices.size === 0 || isDownloading}
                             >
-                                <PackageCheck className="w-4 h-4" />
-                                선택 다운로드 ({selectedIndices.size})
+                                {isDownloading ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <PackageCheck className="w-4 h-4" />
+                                )}
+                                {isDownloading ? "처리 중..." : `선택 다운로드 (${selectedIndices.size})`}
                             </Button>
                         )}
                         <Button variant="outline" className="w-full sm:w-48 gap-2" onClick={onReset}>

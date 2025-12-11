@@ -8,7 +8,7 @@ trigger: always_on
 
 ## 1. 프로젝트 개요 (Overview)
 - **Type**: Client-side Single Page Application (SPA)
-- **Goal**: 브라우저 내에서 서버 전송 없이 PDF를 분할하고 ZIP으로 압축하여 다운로드하는 서비스.
+- **Goal**: 브라우저 내에서 서버 전송 없이 PDF를 분할하거나 병합하는 서비스.
 - **Privacy First**: 모든 파일 처리는 클라이언트(브라우저) 메모리 상에서 이루어지며, 백엔드 API 서버는 존재하지 않습니다.
 
 ## 2. 기술 스택 (Tech Stack)
@@ -20,7 +20,7 @@ trigger: always_on
 - **3D Graphics**: `@splinetool/react-spline` (Interactive 3D Robot)
 - **Icons**: Lucide React
 - **Core Libraries**:
-    - `pdf-lib`: PDF 문서 로드 및 페이지 분할 조작
+    - `pdf-lib`: PDF 문서 로드, 페이지 분할, 병합 조작
     - `jszip`: 분할된 파일들의 압축 처리
     - `react-dropzone`: 파일 업로드 인터랙션
     - `react-pdf`: PDF 페이지 미리보기 (썸네일)
@@ -42,11 +42,12 @@ trigger: always_on
 │   └── views/            # Feature-specific Page Views
 │       ├── UploadView.tsx      # [DEPRECATED] 초기 파일 업로드 뷰 (현재 3D Dropzone으로 대체됨)
 │       ├── PreviewView.tsx     # [PREVIEW] 업로드 된 파일 미리보기 및 확인
+│       ├── MergePrepView.tsx   # [MERGE_PREP] 병합 전 파일 목록 편집 뷰 (순서 변경, 삭제)
 │       ├── ProcessingView.tsx  # [PROCESSING] 처리 진행 화면
 │       └── SuccessView.tsx     # [COMPLETED] 완료, 페이지 선택 및 다운로드 화면
 ├── lib/
 │   ├── utils.ts          # Shadcn cn() 유틸리티
-│   └── pdf-processing.ts # PDF 분할(splitPdf) 및 ZIP 압축(createZip) 로직
+│   └── pdf-processing.ts # PDF 처리 로직 (분 할, 병합, 압축)
 ├── public/               # Static Assets
 └── docs/                 # Project Documentation (PRD, Execution Plan, Architecture)
 ```
@@ -60,28 +61,34 @@ trigger: always_on
 ### 4.2 State Machine Pattern
 - `page.tsx`는 UI의 상태를 관리하는 컨트롤러 역할을 합니다.
 - **States**:
-    1. `IDLE`: 초기 상태. 전체 화면 3D 로봇 배경이 표시되며, 로봇 머리 부분(Head Dropzone)을 통해 파일을 업로드합니다.
-        - **Drag & Drop**: 화면 전체가 아닌 **로봇의 머리 영역**에만 드롭존이 활성화됩니다.
-    2. `PREVIEW`: (현재 사용 안 함 - Direct Processing으로 전환)
-    3. `PROCESSING`: 파일 변환 및 압축 연산 수행 중. (3D 배경 위에 오버레이)
-    4. `COMPLETED`: 변환 완료, 다운로드 버튼 활성화. (3D 배경 위에 오버레이)
+    1. `IDLE`: 초기 상태. 분할/병합 모드 선택 가능. 3D 로봇 배경.
+        - **Drag & Drop**: 로봇 머리 영역(Head Dropzone)을 통해 파일 업로드.
+    2. `MERGE_PREP`: (병합 모드 전용) 업로드된 파일들의 목록을 확인하고 순서를 조정하는 상태.
+    3. `PROCESSING`: 파일 변환, 병합, 압축 연산 수행 중.
+    4. `COMPLETED`: 작업 완료. 결과물 다운로드 가능.
 
 ### 4.3 Logic Flow
-1. **User Action**: `IDLE` 상태에서 로봇의 머리 부분에 PDF 파일을 드래그 & 드롭.
-2. **Validation**: 파일 타입(.pdf) 및 크기(100MB) 검증.
-3. **State Transition**: `IDLE` -> `PROCESSING`.
-4. **Core Processing** (`pdf-processing.ts`):
-    - `splitPdf()`: `pdf-lib`으로 문서를 로드하고 페이지별로 분할하여 Blob 배열 생성.
-    - `createZip()`: `jszip`으로 분할된 Blob들을 하나의 ZIP 파일로 패키징.
-5. **Completion**: 결과 ZIP Blob을 상태에 저장하고 `COMPLETED` 상태로 전환.
-6. **Selection & Download**:
-    - `SuccessView`에서 사용자가 다운로드할 페이지를 개별 선택 가능.
-    - "전체 다운로드" 또는 "선택 다운로드" 버튼을 통해 ZIP 파일 다운로드.
+
+#### A. PDF 분할 (Split Mode)
+1. **User Action**: `IDLE` 상태(분할 모드)에서 PDF 파일 1개 드롭.
+2. **Core Processing**: `splitPdf()` 실행 (페이지별 Blob 생성).
+3. **Completion**: 결과 Blob들을 상태에 저장 후 `COMPLETED` 전환.
+4. **Download**: "전체 ZIP 다운로드" 또는 개별/선택 페이지 다운로드.
+
+#### B. PDF 병합 (Merge Mode)
+1. **User Action**: `IDLE` 상태(병합 모드)에서 다수의 PDF 파일 드롭.
+2. **Page Expansion**: 드롭된 각 파일은 즉시 모든 페이지 단위로 분할되어 목록에 추가됨 (예: 3페이지 파일 -> 3개의 항목).
+3. **Preparation** (`MergePrepView`):
+    - 사용자가 썸네일을 보며 페이지 순서를 변경하거나 불필요한 페이지 삭제.
+    - 추가 파일 드롭 가능.
+4. **Core Processing**: `mergePdfs()` 실행 (목록의 순서대로 하나의 PDF로 병합).
+5. **Completion**: 병합된 PDF Blob 생성 후 `COMPLETED` 전환.
+6. **Download**: "병합된 PDF 다운로드" 버튼 활성화.
 
 ## 5. 코딩 컨벤션 (Coding Conventions)
 
 ### 5.1 일반 규칙
-- 모든 설명, 실행 계획, 작업(Task), 주석, 커밋 메시지와 **UI 텍스트**는 **한국어**로 작성합니다.
+- 모든 설명, 구현 계획, 작업(Task), 주석, 커밋 메시지와 **UI 텍스트**는 **한국어**로 작성합니다.
 - 변수명, 함수명은 영어로 작성하되 의미가 명확해야 합니다.
 - **Functional Components**: React 컴포넌트는 함수형으로 작성합니다.
 
@@ -91,6 +98,7 @@ trigger: always_on
 
 ### 5.3 비동기 처리
 - PDF 처리와 같이 시간이 걸리는 작업은 UI가 멈추지 않도록 비동기(`async/await`)로 처리합니다.
+- 다운로드 등 시간이 걸리는 버튼 작업 시에는 로딩 인디케이터(`Loader2` 등)를 노출하여 사용자에게 피드백을 줍니다.
 
 ## 6. AI 에이전트 행동 수칙
 1. **사용자 언어**: 항상 한국어로 소통합니다.
